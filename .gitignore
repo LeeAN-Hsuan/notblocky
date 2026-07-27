@@ -34,3 +34,6 @@ project-note.html
 *.sqlite
 *.sqlite3
 /data/
+
+# Vercel CLI 的本機連結資訊
+.vercel
