@@ -1,0 +1,9 @@
+這個檔案存在的唯一目的：讓這個資料夾不會消失。
+
+default.project.json 指向 src/StarterPlayerScripts/。
+如果這個資料夾是空的，經過 git 或某些壓縮/解壓縮之後它會【消失】，
+然後 `rojo serve` 會因為找不到 $path 而直接失敗 ——
+而錯誤訊息跟你想做的事完全無關。
+
+客戶端腳本（處理玩家的鍵盤/滑鼠輸入、HUD）放在這個資料夾裡。
+檔名慣例：<實驗名>Client.client.lua

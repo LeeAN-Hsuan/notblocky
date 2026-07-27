@@ -1,0 +1,28 @@
+{
+  "_說明": "一隻會拍翅膀的飛行生物。★ 改這個檔案就能做出不同的生物，不必碰 Blender 的介面。",
+  "_單位": "公分。Roblox 端可以再縮放，尺度不必糾結。",
+
+  "name": "flyer",
+  "color": [0.35, 0.42, 0.55],
+  "max_influences": 2,
+
+  "_body說明": "軀幹：沿 +Z 直立。taper = 上面比下面窄多少（0.35 = 窄 35%）。layers 越多，Spine 彎折越平滑。",
+  "body": { "w": 26, "d": 16, "h": 60, "taper": 0.35, "layers": 6 },
+
+  "_limbs說明": [
+    "每一隻肢體 = 一條骨鏈 + 一片幾何。",
+    "name      骨頭名字會變成 WingR_1 / WingR_2 / WingR_3（自動加編號）",
+    "attach    從軀幹的哪裡長出來（比例，不是絕對座標）：[x, y, z]，z=0.78 表示軀幹高度的 78% 處",
+    "dir       往哪個方向長：[1,0,0] = +X（右）／[-1,0,0] = 左／[0,0,-1] = 往下（腿）",
+    "segments  分幾節 = 幾根骨頭。★ 節數越多，能做的動作越細（翅膀 3 節就夠像鳥了）",
+    "length    總長度",
+    "width/thick  斷面的寬與厚",
+    "taper     往末端收多少（0.55 = 尖端只剩 45% 寬）",
+    "lift      沿途上揚幅度（翅膀用，讓它不是一片平板）"
+  ],
+  "limbs": [
+    { "name": "WingR", "attach": [0.35, 0, 0.78],  "dir": [1, 0, 0],   "segments": 3, "length": 90, "width": 34, "thick": 3.4, "taper": 0.55, "lift": 10 },
+    { "name": "WingL", "attach": [-0.35, 0, 0.78], "dir": [-1, 0, 0],  "segments": 3, "length": 90, "width": 34, "thick": 3.4, "taper": 0.55, "lift": 10 },
+    { "name": "Tail",  "attach": [0, 0, 0.15],     "dir": [0, 1, -0.3], "segments": 3, "length": 55, "width": 10, "thick": 8,   "taper": 0.7,  "lift": 0 }
+  ]
+}

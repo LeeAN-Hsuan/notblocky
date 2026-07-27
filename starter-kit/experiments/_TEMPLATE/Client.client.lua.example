@@ -1,0 +1,132 @@
+--[[
+    ★★ 客戶端腳本範本 —— 【平板可玩】的骨架
+
+    這個檔案【不會被執行】（副檔名是 .example，Rojo 看不到它）。
+    它是一份**可以複製的骨架**。
+
+    ## 怎麼用
+
+    複製到 `src/StarterPlayerScripts/<你的實驗名>Client.client.lua`，然後改。
+
+    ★ 客戶端腳本一律放 `src/StarterPlayerScripts/`（不是 ServerScriptService）。
+      `ContextActionService`、`UserInputService`、觸控按鈕 —— **全部只能在客戶端跑。**
+
+    ---
+
+    ## ★★★ 這份範本存在的唯一理由：平板
+
+    **大部分人用這個框架的目的，就是「讓我小孩在平板上玩到」。**
+
+    **Roblox 免費送你**：移動搖桿、跳躍鈕、鏡頭拖曳。
+    **Roblox 【不會】送你**：**你自己綁的每一顆鍵**。
+
+    ⇒ 在平板上，你綁的每一個動作**都要自己長一顆按鈕出來**，
+      否則遊戲**完全動不了** —— 而你在電腦上用鍵盤測，**每一項都會是綠的**。
+
+    **⇒ 關鍵就是 `BindActionAtPriority` 的第三個參數 `createTouchButton` 要傳 `true`。**
+
+    詳見 `docs/GOTCHAS.md` §6.6。
+]]
+
+local ContextActionService = game:GetService("ContextActionService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+
+-- ★ 鐵律③：WaitForChild 一律帶 timeout（不帶是永遠 yield，pcall 接不住 → 靜默卡死）
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Game = ReplicatedStorage:WaitForChild("Game", 10) or error("[Client] 找不到 Game —— Rojo 沒接上？")
+local Shared = Game:WaitForChild("Shared", 10) or error("[Client] 找不到 Game.Shared")
+
+-- 例：要用飛行模組的話
+-- local Flight = require(Shared:WaitForChild("Flight", 10))
+
+---------------------------------------------------------------------------
+-- 動作定義 —— ★ 每一個動作都在這裡登記一次，平板才長得出按鈕
+---------------------------------------------------------------------------
+
+local ACTIONS = {
+    {
+        name  = "Fly",                  -- 內部代號（不會顯示給玩家）
+        title = "飛",                   -- ★ 按鈕上顯示的字。不設的話會顯示 name（"Fly"）
+        key   = Enum.KeyCode.Space,     -- 電腦玩家按的鍵
+        -- ★ 按鈕位置：從右下角往左上退，避開 Roblox 內建的跳躍鈕
+        pos   = UDim2.new(1, -140, 1, -140),
+    },
+    -- 再加一個動作就多一筆：
+    -- { name = "Shoot", title = "射", key = Enum.KeyCode.E, pos = UDim2.new(1, -140, 1, -240) },
+}
+
+-- 每個動作的按下狀態（給每幀迴圈讀）
+local held = {}
+
+local function makeHandler(actionName)
+    return function(_, inputState)
+        if inputState == Enum.UserInputState.Begin then
+            held[actionName] = true
+        elseif inputState == Enum.UserInputState.End or inputState == Enum.UserInputState.Cancel then
+            held[actionName] = false
+        end
+
+        --[[ ★★ Sink ＝ 吃掉這個按鍵，不讓它繼續傳下去。
+
+             為什麼空白鍵一定要 Sink：坐在座位上時，Roblox 內建的 jumpAction
+             也綁在空白鍵上（優先序 2000）—— 不吃掉的話，玩家會被自己【彈出座位】。 ]]
+        return Enum.ContextActionResult.Sink
+    end
+end
+
+for _, action in ipairs(ACTIONS) do
+    held[action.name] = false
+
+    --[[ ★★★ 第三個參數 = createTouchButton
+
+         true  → 在平板／手機上【自動長出一顆按鈕】（在電腦上完全沒作用，不會多出東西）
+         false → 平板上【一顆按鈕都沒有】＝ 這個動作在平板上永遠做不到
+
+         ★ 優先序 3000 > 內建 jumpAction 的 2000 → 才搶得到空白鍵。 ]]
+    ContextActionService:BindActionAtPriority(
+        action.name,
+        makeHandler(action.name),
+        true,                    -- ★★ createTouchButton
+        3000,                    -- ★ 優先序：要比內建的 2000 高
+        action.key
+    )
+
+    ContextActionService:SetTitle(action.name, action.title)
+    if action.pos then
+        ContextActionService:SetPosition(action.name, action.pos)
+    end
+end
+
+---------------------------------------------------------------------------
+-- 每幀迴圈
+---------------------------------------------------------------------------
+
+--[[ ★ 已經被 Sink 掉的鍵，【不要】再用 UserInputService:IsKeyDown() 去讀 ——
+      它已經不會傳到那裡了。要讀上面 handler 記下的 `held`。 ]]
+
+local RunService = game:GetService("RunService")
+
+RunService.RenderStepped:Connect(function(_dt)
+    local character = player.Character
+    if not character then return end
+
+    if held["Fly"] then
+        -- 在這裡做「按住飛行鍵」時該做的事
+    end
+end)
+
+--[[
+    ---------------------------------------------------------------------------
+    ★★★ 寫完之後，【自己驗一次平板】—— 不要等小孩打開才發現動不了
+
+        Studio → Test 分頁 → Device → 選 iPad → 按 Play → 用滑鼠點：
+
+          □ 左下角有搖桿嗎？（角色走得動嗎）
+          □ ★ 你綁的【每一個】動作，畫面上都有一顆按鈕嗎？
+          □ 點得動嗎？做得出你要它做的事嗎？
+
+    「在電腦上用鍵盤測過了」＝ 在一個【不真實的環境】驗證 ＝ 一個假的綠燈。
+    ---------------------------------------------------------------------------
+]]
