@@ -6,11 +6,11 @@
 > 這裡把缺的那一段接起來，讓好看的模型變成真的會動的角色。
 
 > ⚠️ **NotBlocky 是非官方的個人專案，與 Roblox Corporation 沒有任何從屬或背書關係。**
-> Roblox 是 Roblox Corporation 的商標。本專案不提供技術支援，也沒有保固（見 `LICENSE`）。
+> Roblox 是 Roblox Corporation 的商標。本專案沒有保固（見 `LICENSE`）。
 >
 > **NotBlocky is an unofficial personal project, not affiliated with or endorsed by
 > Roblox Corporation.** Roblox is a trademark of Roblox Corporation.
-> No support and no warranty are provided (see `LICENSE`).
+> No warranty is provided (see `LICENSE`).
 
 ---
 

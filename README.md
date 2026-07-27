@@ -4,11 +4,11 @@
 *A way of working with an AI to make Roblox games. And they don't have to look blocky.*
 
 > ⚠️ **NotBlocky 是非官方的個人專案，與 Roblox Corporation 沒有任何從屬或背書關係。**
-> Roblox 是 Roblox Corporation 的商標。本專案不提供技術支援，也沒有保固。
+> Roblox 是 Roblox Corporation 的商標。本專案沒有保固（見 `LICENSE`）。
 >
 > **NotBlocky is an unofficial personal project, not affiliated with or endorsed by
 > Roblox Corporation.** Roblox is a trademark of Roblox Corporation.
-> No support and no warranty are provided.
+> No warranty is provided (see `LICENSE`).
 
 ---
 
@@ -65,7 +65,6 @@ closes that gap, and lets the AI write the code for you.
 - 所有的坑都是在 **Windows** 上實測出來的，**Mac 完全沒有驗證過**
 - 發布上架與平板遊玩**作者實際做過**（有一款遊戲已在線上），但 starter kit 裡那份**發布文件本身還沒被逐步驗證**
 - 目前的骨架是脊椎鏈，**腿還沒有骨頭** ⇒ 做得到抬頭與身體起伏，做不到走路
-- 這是一個人做的工具，**沒有客服**
 
 ---
 
