@@ -37,6 +37,8 @@ body{
   line-height:1.85; letter-spacing:.01em; overflow-x:hidden;
 }
 a{color:inherit}
+/* 內文與頁尾的連結：用天空藍區隔出「這個可以點」，但不搶按鈕的視覺重量 */
+.notice a, footer a{color:var(--sky-d); font-weight:700; text-underline-offset:3px}
 img,svg{max-width:100%}
 img{height:auto}   /* ★ 有 width/height 屬性時，只設 width 會被屬性高度壓扁 */
 .wrap{max-width:1120px; margin:0 auto; padding:0 24px; position:relative; z-index:2}
@@ -532,13 +534,17 @@ footer .wrap{display:flex; gap:16px; justify-content:space-between; flex-wrap:wr
         Download starter kit <span class="sz">119 KB</span>
       </a>
       <p class="notice" style="margin-top:16px">Free. No sign-up, and no data is collected from you.</p>
+      <p class="notice" style="margin-top:10px">
+        Or take the source directly: <a href="https://github.com/LeeAN-Hsuan/notblocky">github.com/LeeAN-Hsuan/notblocky</a>
+        <br>Give that address to your Claude Code. It will clone the repo itself, and you keep getting updates.
+      </p>
     </div>
   </div>
 </section>
 
 <footer>
   <div class="wrap">
-    <div>NotBlocky · a way of working with an AI to make Roblox games</div>
+    <div>NotBlocky · a way of working with an AI to make Roblox games · <a href="https://github.com/LeeAN-Hsuan/notblocky">GitHub</a> (MIT)</div>
     <div><b>NotBlocky is an unofficial personal project</b>, not affiliated with Roblox Corporation. Roblox is a trademark of that company.</div>
   </div>
 </footer>

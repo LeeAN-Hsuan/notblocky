@@ -37,6 +37,8 @@ body{
   line-height:1.85; letter-spacing:.01em; overflow-x:hidden;
 }
 a{color:inherit}
+/* 內文與頁尾的連結：用天空藍區隔出「這個可以點」，但不搶按鈕的視覺重量 */
+.notice a, footer a{color:var(--sky-d); font-weight:700; text-underline-offset:3px}
 img,svg{max-width:100%}
 img{height:auto}   /* ★ 有 width/height 屬性時，只設 width 會被屬性高度壓扁 */
 .wrap{max-width:1120px; margin:0 auto; padding:0 24px; position:relative; z-index:2}
@@ -538,13 +540,17 @@ footer .wrap{display:flex; gap:16px; justify-content:space-between; flex-wrap:wr
         下載 starter kit <span class="sz">119 KB</span>
       </a>
       <p class="notice" style="margin-top:16px">免費。不需要註冊，也不會收集你的任何資料。</p>
+      <p class="notice" style="margin-top:10px">
+        或是直接抓原始碼：<a href="https://github.com/LeeAN-Hsuan/notblocky">github.com/LeeAN-Hsuan/notblocky</a>
+        <br>把這個網址給你的 Claude Code，它會自己 clone 下來，之後也拿得到更新。
+      </p>
     </div>
   </div>
 </section>
 
 <footer>
   <div class="wrap">
-    <div>NotBlocky · 一套跟 AI 一起做 Roblox 遊戲的工作方法</div>
+    <div>NotBlocky · 一套跟 AI 一起做 Roblox 遊戲的工作方法 · <a href="https://github.com/LeeAN-Hsuan/notblocky">GitHub</a>（MIT）</div>
     <div><b>NotBlocky 是非官方的個人專案</b>，與 Roblox Corporation 無關。Roblox 是該公司的商標。</div>
   </div>
 </footer>

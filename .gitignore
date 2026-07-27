@@ -28,3 +28,9 @@ __pycache__/
 # 個人筆記與密鑰（永不入版控）
 project-note.html
 .env
+
+# 資料庫檔（這個專案目前沒有，先擋著）
+*.db
+*.sqlite
+*.sqlite3
+/data/
