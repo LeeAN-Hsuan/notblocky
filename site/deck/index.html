@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NotBlocky — 一個跟 AI 協作的真實案例</title>
+<meta name="description" content="6 分鐘分享：官方 AI 生得出好看的模型卻生不出骨頭，這條管線怎麼接起來；以及跟 AI 協作真正學到的四件事。">
+<link rel="icon" type="image/svg+xml" href="media/icon.svg">
+<meta name="theme-color" content="#0B1219">
+
+<style>
+/* ============================================================
+   NotBlocky 簡報 — 深色專業簡報風
+   品牌色沿用 notblocky.vercel.app，形狀語言沿用官網積木
+   ============================================================ */
+:root{
+  /* 深底三階 */
+  --bg:#0A1017; --bg2:#0F1B26; --bg3:#152430;
+  /* 文字三階 */
+  --ink:#F2F7FC; --ink2:#B9C7D4; --ink3:#7F92A3;
+  --line:#22323F; --line2:#2E4252;
+  /* 品牌色（與官網同值） */
+  --grass:#34C97B; --grass-d:#1E9E5C;
+  --sky:#3B93F7; --sky-d:#2170CE;
+  --sun:#FFC43D; --coral:#FF6F5E; --grape:#8B7CF6;
+  --r:20px;
+  --font:"Noto Sans TC","PingFang TC","Microsoft JhengHei",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%; margin:0; overflow:hidden}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--font);
+  line-height:1.75; letter-spacing:.01em;
+  display:grid; place-items:center;
+}
+img,svg{max-width:100%}
+/* 收尾頁的網址要真的能點；用底線暗示可點，顏色沿用所在段落 */
+.slide a{color:inherit; text-decoration:none; border-bottom:2px solid rgba(255,255,255,.24)}
+.slide a:hover{border-bottom-color:currentColor}
+/* 點擊左右半邊翻頁不該蓋掉連結 */
+.slide a{position:relative; z-index:3}
+img{height:auto}  /* ★ 有 width 屬性時只設 width 會被壓扁，見專案踩坑紀錄 */
+
+/* ===== 舞台：固定 1280x720，用 scale 等比縮放，投影不會跑版 ===== */
+#stage{
+  position:relative; width:1280px; height:720px; flex:none;
+  transform-origin:center center;
+}
+
+/* ===== 單張投影片 ===== */
+.slide{
+  position:absolute; inset:0; padding:64px 76px 78px;
+  display:none; flex-direction:column;
+  background:var(--bg);
+  overflow:hidden;
+}
+.slide.on{display:flex}
+/* 進場轉場：整張輕微推入（元素層級的動畫由 anime.js 負責） */
+@media (prefers-reduced-motion:no-preference){
+  .slide.on{animation:slideIn .42s cubic-bezier(.2,.7,.3,1) both}
+  .slide.on.back{animation-name:slideInBack}
+}
+@keyframes slideIn{from{opacity:0; transform:translateX(46px) scale(.985)} to{opacity:1; transform:none}}
+@keyframes slideInBack{from{opacity:0; transform:translateX(-46px) scale(.985)} to{opacity:1; transform:none}}
+
+/* 背景光暈：每張可換色 */
+.slide::before{
+  content:""; position:absolute; inset:-30% -10% auto -10%; height:150%; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(42% 40% at 14% 12%, rgba(59,147,247,.13), transparent 68%),
+    radial-gradient(38% 38% at 88% 8%, rgba(52,201,123,.14), transparent 68%),
+    radial-gradient(34% 34% at 62% 92%, rgba(255,196,61,.08), transparent 68%);
+}
+.slide.warm::before{
+  background:
+    radial-gradient(44% 42% at 12% 10%, rgba(255,196,61,.14), transparent 68%),
+    radial-gradient(38% 38% at 90% 14%, rgba(255,111,94,.12), transparent 68%);
+}
+.slide.cool::before{
+  background:
+    radial-gradient(46% 44% at 18% 86%, rgba(139,124,246,.14), transparent 68%),
+    radial-gradient(40% 40% at 84% 10%, rgba(59,147,247,.14), transparent 68%);
+}
+.slide > *{position:relative; z-index:1}
+
+/* ===== 共用排版元件 ===== */
+.eyebrow{
+  display:inline-flex; align-items:center; gap:10px; align-self:flex-start;
+  background:rgba(255,255,255,.045); border:1px solid var(--line2);
+  border-radius:999px; padding:7px 17px; font-size:15px; font-weight:700; color:var(--ink2);
+  margin-bottom:22px;
+}
+.eyebrow i{width:9px; height:9px; border-radius:50%; background:var(--grass); flex:none}
+.eyebrow.sky i{background:var(--sky)} .eyebrow.sun i{background:var(--sun)}
+.eyebrow.grape i{background:var(--grape)} .eyebrow.coral i{background:var(--coral)}
+
+h1{font-size:74px; line-height:1.16; margin:0 0 20px; font-weight:900; letter-spacing:.005em; text-wrap:balance}
+h2{font-size:46px; line-height:1.26; margin:0 0 16px; font-weight:900; letter-spacing:.005em; text-wrap:balance}
+h3{font-size:22px; margin:0 0 9px; font-weight:800}
+p{margin:0 0 14px; color:var(--ink2); font-size:19px}
+b{color:var(--ink); font-weight:800}
+.lede{font-size:22px; max-width:46ch}
+.hi{background:linear-gradient(180deg, transparent 60%, rgba(255,196,61,.42) 60%); padding:0 .08em}
+.hi.g{background:linear-gradient(180deg, transparent 60%, rgba(52,201,123,.38) 60%)}
+.dim{color:var(--ink3)}
+.small{font-size:16px}
+
+/* 兩欄／三欄 */
+/* ★ 不可以加 min-height:0：那會允許這個容器被壓縮到比內容還矮，
+   卡片於是「安靜地」溢出去蓋住下面的 punch，而任何量容器邊界的檢查都照樣全綠。
+   保留預設的 min-height:auto，內容過多時會把整張撐破 —— 那才會被溢出檢查抓到。 */
+.cols{display:grid; gap:34px; align-items:center; flex:1}
+.cols.c2{grid-template-columns:1.02fr .98fr}
+.cols.c2t{grid-template-columns:1.15fr .85fr; align-items:start}
+.cols.c2w{grid-template-columns:.82fr 1.18fr}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:20px}
+.grid2{display:grid; grid-template-columns:repeat(2,1fr); gap:22px}
+
+/* 卡片 */
+.card{
+  background:linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.022));
+  border:1px solid var(--line); border-radius:var(--r); padding:24px 24px 22px;
+}
+.card .ic{
+  width:46px; height:46px; border-radius:14px; display:grid; place-items:center; margin-bottom:14px;
+  background:rgba(52,201,123,.14);
+}
+.card .ic svg{width:24px; height:24px; fill:var(--grass)}
+.card.sky .ic{background:rgba(59,147,247,.15)} .card.sky .ic svg{fill:var(--sky)}
+.card.sun .ic{background:rgba(255,196,61,.15)} .card.sun .ic svg{fill:var(--sun)}
+.card.coral .ic{background:rgba(255,111,94,.15)} .card.coral .ic svg{fill:var(--coral)}
+.card.grape .ic{background:rgba(139,124,246,.16)} .card.grape .ic svg{fill:var(--grape)}
+.card p{font-size:17px; margin:0}
+.card p + p{margin-top:9px}
+
+/* 重點結論框 */
+.punch{
+  border-left:5px solid var(--sun); background:rgba(255,196,61,.09);
+  border-radius:0 16px 16px 0; padding:18px 24px; margin-top:auto;
+}
+.punch p{margin:0; font-size:22px; color:var(--ink); font-weight:700; line-height:1.6}
+.punch.g{border-left-color:var(--grass); background:rgba(52,201,123,.1)}
+.punch.s{border-left-color:var(--sky); background:rgba(59,147,247,.1)}
+.punch.c{border-left-color:var(--coral); background:rgba(255,111,94,.1)}
+.punch .who{display:block; margin-top:8px; font-size:15px; font-weight:600; color:var(--ink3)}
+
+/* 大數字 */
+.bignum{display:flex; gap:40px; flex-wrap:wrap}
+.bignum div{min-width:110px}
+.bignum b{
+  display:block; font-size:42px; font-weight:900; line-height:1.15; color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+.bignum b.g{color:var(--grass)} .bignum b.s{color:var(--sky)} .bignum b.u{color:var(--sun)}
+.bignum b.c{color:var(--coral)}   /* 對照組：證明這把尺在失敗時真的會叫 */
+.bignum span{font-size:15px; color:var(--ink3)}
+
+/* 圖片區 */
+figure{margin:0}
+figure img{
+  width:100%; border-radius:16px; border:1px solid var(--line2); display:block;
+  background:#0d1620; box-shadow:0 24px 60px rgba(0,0,0,.5);
+}
+figcaption{margin-top:12px; font-size:15px; color:var(--ink3); line-height:1.65}
+.src-tag{
+  display:inline-block; margin-right:8px; padding:2px 10px; border-radius:999px;
+  font-size:13px; font-weight:800; letter-spacing:.04em;
+  background:rgba(255,255,255,.07); color:var(--ink2);
+}
+.src-tag.real{background:rgba(52,201,123,.16); color:var(--grass)}
+/* 寬幅實拍圖：限高置中，避免把整張撐爆（720 舞台是硬上限） */
+figure.wide img{max-height:342px; width:auto; margin:0 auto}
+
+/* 卡片較多的那張：全面縮一級間距，換出約 25px */
+.slide.tight h2{margin-bottom:12px}
+.slide.tight .eyebrow{margin-bottom:14px}
+.slide.tight .card{padding:19px 20px 18px}
+.slide.tight .card .ic{width:40px; height:40px; border-radius:12px; margin-bottom:11px}
+.slide.tight .card .ic svg{width:21px; height:21px}
+.slide.tight .card h3{font-size:20px; margin-bottom:7px}
+.slide.tight .card p{font-size:16px}
+.slide.tight .punch{padding:15px 22px}
+.slide.tight .punch p{font-size:20px}
+.slide.tight .punch .who{font-size:14px; margin-top:6px}
+.slide.tight .ticks li{font-size:17px; margin-bottom:8px}
+.slide.tight .cols p, .slide.tight > p{font-size:18px; margin-bottom:10px}
+
+/* 勾選清單 */
+.ticks{margin:14px 0 0; padding:0; list-style:none}
+.ticks li{position:relative; padding-left:28px; margin-bottom:10px; color:var(--ink2); font-size:18px}
+.ticks li::before{
+  content:""; position:absolute; left:0; top:.55em; width:14px; height:8px;
+  border-left:3px solid var(--grass); border-bottom:3px solid var(--grass);
+  transform:rotate(-45deg); border-radius:1px;
+}
+.ticks.x li::before{
+  border:0; width:14px; height:14px; top:.42em; transform:none; border-radius:3px;
+  background:linear-gradient(45deg, transparent 44%, var(--coral) 44%, var(--coral) 56%, transparent 56%),
+             linear-gradient(-45deg, transparent 44%, var(--coral) 44%, var(--coral) 56%, transparent 56%);
+}
+
+/* 對照條（AI 出什麼 / 我出什麼） */
+.split{display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid var(--line); border-radius:var(--r); overflow:hidden}
+.split > div{padding:24px 26px}
+.split > div + div{border-left:1px solid var(--line)}
+.split .hd{display:flex; align-items:center; gap:11px; margin-bottom:14px; font-size:19px; font-weight:800}
+.split .hd .dot{width:11px; height:11px; border-radius:50%; flex:none}
+.split .ai{background:rgba(59,147,247,.07)} .split .ai .dot{background:var(--sky)}
+.split .me{background:rgba(52,201,123,.07)} .split .me .dot{background:var(--grass)}
+.split ul{margin:0; padding-left:20px; color:var(--ink2); font-size:17px}
+.split li{margin-bottom:8px}
+
+/* 封面 meta chip */
+.metas{display:flex; gap:12px; flex-wrap:wrap; margin-top:26px}
+.metas span{
+  font-size:15px; font-weight:700; color:var(--ink2);
+  border:1px solid var(--line2); border-radius:11px; padding:7px 15px;
+  background:rgba(255,255,255,.03);
+}
+
+/* 封面：左欄加寬 + 字級收一級，讓主標剛好斷成兩行（不要把「遊戲，」擠成孤行） */
+.slide.cover .cols.c2{grid-template-columns:1.24fr .76fr}
+.slide.cover h1{font-size:66px}
+
+/* 章節過場張 */
+.slide.chapter{justify-content:center; align-items:flex-start; padding-left:110px}
+.chapter .num{
+  font-size:15px; font-weight:900; letter-spacing:.22em; color:var(--grape); margin-bottom:14px;
+}
+.chapter h1{font-size:66px; max-width:20ch}
+
+/* 盤整頁：四條規矩接成一個循環。沿用主詞配色——我＝綠、AI＝藍 */
+.loop4{
+  display:grid; grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;
+  gap:0 10px; align-items:stretch; margin-top:26px;
+}
+.lp{border-radius:16px; padding:15px 16px 14px; border:1px solid var(--line)}
+.lp.me{background:rgba(52,201,123,.08); border-color:rgba(52,201,123,.3)}
+.lp.ai{background:rgba(59,147,247,.08); border-color:rgba(59,147,247,.3)}
+.lp .top{display:flex; align-items:center; gap:9px; margin-bottom:9px}
+.lp .ic2{width:34px; height:34px; border-radius:10px; display:grid; place-items:center; flex:none}
+.lp .ic2 svg{width:19px; height:19px}
+.lp.me .ic2{background:rgba(52,201,123,.18)} .lp.me .ic2 svg{fill:var(--grass)}
+.lp.ai .ic2{background:rgba(59,147,247,.18)} .lp.ai .ic2 svg{fill:var(--sky)}
+.lp .no{font-size:12px; font-weight:900; letter-spacing:.08em; padding:3px 9px; border-radius:7px}
+.lp.me .no{background:rgba(52,201,123,.18); color:var(--grass)}
+.lp.ai .no{background:rgba(59,147,247,.18); color:var(--sky)}
+.lp h3{font-size:17px; margin:0 0 6px; font-weight:800}
+.lp p{font-size:14.5px; margin:0; color:var(--ink2); line-height:1.65}
+.arw{display:grid; place-items:center}
+.arw svg{width:20px; height:20px; fill:var(--ink3)}
+.loopback{display:block; width:100%; margin-top:2px}
+
+/* 主詞對照表：這場簡報的核心，AI 做的與我做的必須一眼分得開 */
+.whois{display:grid; grid-template-columns:auto 1fr; gap:14px 22px; max-width:900px; align-items:center}
+.whois .tag{
+  font-size:19px; font-weight:900; padding:7px 20px; border-radius:12px; text-align:center;
+  border:1px solid transparent;
+}
+.whois .tag.ai{background:rgba(59,147,247,.16); color:var(--sky); border-color:rgba(59,147,247,.35)}
+.whois .tag.me{background:rgba(52,201,123,.16); color:var(--grass); border-color:rgba(52,201,123,.35)}
+.whois p{margin:0; font-size:19px}
+
+/* ===== 底部固定列：進度、頁碼、章節 ===== */
+#chrome{
+  position:absolute; left:0; right:0; bottom:0; height:52px; z-index:20;
+  display:flex; align-items:center; gap:18px; padding:0 76px;
+  font-size:14px; color:var(--ink3); pointer-events:none;
+}
+#chrome .brand{display:flex; align-items:center; gap:9px; font-weight:800; color:var(--ink2); font-size:15px}
+#chrome .brand img{width:22px; height:22px; border-radius:7px}
+#chrome .sec{color:var(--ink3)}
+#chrome .right{margin-left:auto; display:flex; align-items:center; gap:16px}
+#pageno{font-variant-numeric:tabular-nums; font-weight:800; color:var(--ink2)}
+#timer{
+  font-variant-numeric:tabular-nums; font-weight:800; letter-spacing:.03em;
+  padding:3px 11px; border-radius:9px; border:1px solid var(--line2); background:rgba(255,255,255,.03);
+}
+#timer.run{color:var(--grass); border-color:rgba(52,201,123,.4)}
+#timer.late{color:var(--sun); border-color:rgba(255,196,61,.45)}
+#timer.over{color:var(--coral); border-color:rgba(255,111,94,.5)}
+#bar{position:absolute; left:0; bottom:0; height:3px; background:linear-gradient(90deg,var(--grass),var(--sky)); width:0; z-index:21; transition:width .42s cubic-bezier(.2,.7,.3,1)}
+
+/* ===== 講稿面板 ===== */
+#notes{
+  position:absolute; left:0; right:0; bottom:52px; z-index:22; display:none;
+  /* ★ 必須是實色：半透明會讓底下的內容透上來跟講稿疊字 */
+  background:#060B10; border-top:1px solid var(--line2);
+  box-shadow:0 -18px 40px rgba(0,0,0,.55);
+  padding:20px 76px 22px; max-height:300px; overflow:auto;
+}
+#notes.on{display:block}
+#notes h4{margin:0 0 8px; font-size:14px; letter-spacing:.14em; color:var(--grass); font-weight:900}
+#notes p{margin:0 0 8px; font-size:17px; color:var(--ink2); line-height:1.8}
+#notes p:last-child{margin:0}
+#notes .cue{color:var(--ink3); font-size:15px}
+
+/* ===== 總覽 ===== */
+#ov{
+  position:absolute; inset:0; z-index:40; display:none; background:#060B10;
+  padding:52px 60px; overflow:auto;
+}
+#ov.on{display:block}
+#ov h4{margin:0 0 22px; font-size:15px; letter-spacing:.14em; color:var(--ink3); font-weight:900}
+#ovg{display:grid; grid-template-columns:repeat(4,1fr); gap:14px}
+.ovi{
+  text-align:left; cursor:pointer; font:inherit; color:var(--ink2);
+  background:rgba(255,255,255,.045); border:1px solid var(--line); border-radius:14px;
+  padding:14px 16px; transition:border-color .16s, transform .16s;
+}
+.ovi:hover{border-color:var(--sky); transform:translateY(-2px)}
+.ovi[aria-current="true"]{border-color:var(--grass); background:rgba(52,201,123,.12)}
+.ovi b{display:block; font-size:13px; color:var(--ink3); margin-bottom:5px; font-weight:800; letter-spacing:.1em}
+.ovi span{display:block; font-size:16px; color:var(--ink); font-weight:700; line-height:1.5}
+.ovi em{display:block; margin-top:6px; font-style:normal; font-size:13px; color:var(--ink3)}
+
+/* ===== 說明卡（開場提示） ===== */
+#help{
+  position:absolute; right:76px; bottom:66px; z-index:23;
+  background:rgba(6,11,16,.92); border:1px solid var(--line2); border-radius:14px;
+  padding:14px 18px; font-size:14px; color:var(--ink3); line-height:1.9;
+}
+#help b{color:var(--ink2); font-weight:800}
+#help kbd{
+  display:inline-block; min-width:20px; text-align:center; padding:1px 6px; margin:0 2px;
+  border:1px solid var(--line2); border-bottom-width:2px; border-radius:5px;
+  background:rgba(255,255,255,.05); color:var(--ink2); font:inherit; font-size:13px; font-weight:700;
+}
+#help.off{display:none}
+
+/* 減少動態偏好：關掉所有轉場 */
+@media (prefers-reduced-motion:reduce){
+  .slide.on{animation:none!important}
+  #bar{transition:none}
+  .flow-dash{animation:none!important}
+}
+</style>
+</head>
+<body>
+
+<!-- icon symbols：MUI / Material Design Icons（Apache-2.0），與官網同一組 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9.4 16.6 4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0 4.6-4.6-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="m11.99 18.54-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z"/></symbol>
+  <symbol id="i-bug" viewBox="0 0 24 24"><path d="M20 8h-2.81a5.985 5.985 0 0 0-1.82-1.96L17 4.41 15.59 3l-2.17 2.17a6.002 6.002 0 0 0-2.83 0L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+  <symbol id="i-bone" viewBox="0 0 24 24"><path d="M4.5 9a2.5 2.5 0 1 1 2.45-3h10.1a2.5 2.5 0 1 1 2.45 3 2.5 2.5 0 1 1-2.45 3H6.95A2.5 2.5 0 1 1 4.5 9z"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M13 1.5a1.5 1.5 0 0 0-3 0v8h-.5V3a1.5 1.5 0 0 0-3 0v9.2l-1.3-2.1a1.5 1.5 0 0 0-2.6 1.5l3.1 5.4A6 6 0 0 0 11 20h2.5a6 6 0 0 0 6-6V6a1.5 1.5 0 0 0-3 0v3.5H16V3a1.5 1.5 0 0 0-3 0v6.5h-.5v-8H13z"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M14.4 6 14 4H5v17h2v-7h5.6l.4 2h7V6z"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></symbol>
+</svg>
+
+<div id="stage">
+
+<!-- ============ 1. 封面 ============ -->
+<section class="slide on cover" data-sec="開場" data-t="20">
+  <div class="cols c2">
+    <div>
+      <div class="eyebrow" data-anim><i></i>AI 使用者分享會</div>
+      <h1 data-anim>你的 Roblox 遊戲，<br><span class="hi">可以不醜</span></h1>
+      <p class="lede" data-anim>
+        這個專案的<b>程式、文件、檢查，全部是 AI 寫的</b>。<br>
+        我出的是目標、觀點，和一次一次的「可以」。
+      </p>
+      <div class="metas" data-anim>
+        <span>約 6 分鐘</span>
+        <span>用 AI 兩年 · 用 AI agent 幾個月</span>
+        <span>已上線 · MIT</span>
+      </div>
+    </div>
+    <div data-anim>
+      <!-- 手刻積木插圖：沿用官網的形狀語言，改成深底版本 -->
+      <svg viewBox="0 0 420 340" role="img" aria-label="積木堆上長出一株芽">
+        <defs>
+          <linearGradient id="gG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5BDB98"/><stop offset="1" stop-color="#2AAE6B"/></linearGradient>
+          <linearGradient id="gS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#66ABFF"/><stop offset="1" stop-color="#2E7FDD"/></linearGradient>
+          <linearGradient id="gU" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD36B"/><stop offset="1" stop-color="#F5A623"/></linearGradient>
+        </defs>
+        <ellipse cx="210" cy="300" rx="132" ry="20" fill="#000" opacity=".35"/>
+        <g class="fl b1">
+          <rect x="96" y="214" width="112" height="76" rx="16" fill="url(#gS)"/>
+          <rect x="104" y="222" width="96" height="26" rx="10" fill="#fff" opacity=".18"/>
+        </g>
+        <g class="fl b2">
+          <rect x="214" y="226" width="96" height="64" rx="15" fill="url(#gU)"/>
+          <rect x="222" y="234" width="80" height="22" rx="9" fill="#fff" opacity=".22"/>
+        </g>
+        <g class="fl b3">
+          <rect x="140" y="120" width="126" height="92" rx="18" fill="url(#gG)"/>
+          <rect x="150" y="130" width="106" height="28" rx="11" fill="#fff" opacity=".2"/>
+          <path d="M203 206 C203 180, 214 158, 244 132" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round"/>
+          <path d="M196 176 C178 173, 166 160, 164 143 C184 145, 196 158, 196 176 Z" fill="#fff"/>
+          <path d="M224 152 C228 133, 243 120, 262 116 C260 137, 245 150, 224 152 Z" fill="#fff"/>
+        </g>
+        <g fill="#FFC43D"><path d="M318 96l6-14 6 14 14 6-14 6-6 14-6-14-14-6z"/></g>
+        <g fill="#8B7CF6" opacity=".85"><path d="M92 132l4-10 4 10 10 4-10 4-4 10-4-10-10-4z"/></g>
+      </svg>
+    </div>
+  </div>
+  <div class="notes" hidden>
+    <p><b>開場（約 20 秒）</b>：今天分享的不是提示詞技巧。是一個真實專案，還有幾條在過程中換來的規矩。</p>
+    <p class="cue">★ 副標那兩行要念出來，它是整場的主詞規則：程式、文件、檢查都是 AI 寫的；我出的是目標、觀點，和一次一次的「可以」。後面每一張都嚴格照這個分。</p>
+    <p class="cue">用 AI 大概兩年了，這幾個月才轉成用 AI agent（Claude Code）。</p>
+  </div>
+</section>
+
+<!-- ============ 2. 痛點 ============ -->
+<section class="slide" data-sec="案例" data-t="22">
+  <div class="eyebrow sun" data-anim><i></i>先講問題</div>
+  <h2 data-anim>做一個<b>能玩</b>的遊戲，已經不難了。</h2>
+  <h2 data-anim style="color:var(--sun)">難的是，做出來<span class="hi">不像方塊人</span>。</h2>
+  <p class="lede" data-anim style="margin-top:8px">
+    AI 可以幫你把程式寫完、把玩法做出來。但玩家第一眼看到的不是你的程式碼，
+    是<b>一個動起來像石頭的角色</b>。
+  </p>
+  <div class="grid3" data-anim style="margin-top:auto">
+    <div class="card sky">
+      <div class="ic"><svg><use href="#i-code"/></svg></div>
+      <h3>程式：AI 做得很好</h3>
+      <p>玩法、存檔、多人同步，交給 AI 寫已經是可行的。</p>
+    </div>
+    <div class="card sun">
+      <div class="ic"><svg><use href="#i-layers"/></svg></div>
+      <h3>模型：AI 也做得不錯</h3>
+      <p>官方內建的 AI 生得出好看的模型與貼圖，不必開 Blender。</p>
+    </div>
+    <div class="card coral">
+      <div class="ic"><svg><use href="#i-bone"/></svg></div>
+      <h3>但中間缺了一段</h3>
+      <p>模型生出來<b>沒有骨頭</b>，所以只能整塊轉、整塊移動。</p>
+    </div>
+  </div>
+  <div class="notes" hidden>
+    <p><b>痛點（約 22 秒）</b>：現在用 AI 做出一個「能玩」的東西門檻已經很低了。真正卡住大家的是「做出來都長得差不多」。</p>
+    <p class="cue">重點是最右邊那張卡：程式和模型 AI 都做得到，缺的是中間那一段。下一張講為什麼。</p>
+  </div>
+</section>
+
+<!-- ============ 3. 病因 ============ -->
+<section class="slide warm tight" data-sec="案例" data-t="24">
+  <div class="eyebrow coral" data-anim><i></i>病因</div>
+  <h2 data-anim>官方 AI 生得出好看的模型，<br><span class="hi">但它生不出骨頭</span>。</h2>
+  <div class="cols c2" style="flex:1; margin-top:10px">
+    <div>
+      <p data-anim style="font-size:21px">
+        骨架決定角色能不能<b>彎</b>。沒有骨架的模型，在引擎裡只剩下三種能力：
+        整塊旋轉、整塊移動、整塊縮放。
+      </p>
+      <ul class="ticks x" data-anim>
+        <li>轉頭 → 整隻翻過去</li>
+        <li>走路 → 腳離地、像滑冰</li>
+        <li>做表情、擺尾巴 → 辦不到</li>
+      </ul>
+      <div class="punch c" data-anim style="margin-top:26px">
+        <p>這不是美感問題，是<b>缺一段管線</b>。<span class="who">而這一段，官方到現在沒有補。</span></p>
+      </div>
+    </div>
+    <div data-anim>
+      <!-- 手刻 SVG：剛體 vs 骨架的概念對照 -->
+      <svg viewBox="0 0 460 320" role="img" aria-label="左邊剛體只能整塊旋轉，右邊有骨架可以彎曲">
+        <defs>
+          <!-- ★ 左右必須是同一個形狀：這張的論點就是「同一個模型」 -->
+          <path id="blob" d="M40 128 C56 78, 96 62, 140 70 C166 75, 180 92, 176 112 C170 134, 132 142, 96 138 C70 135, 50 133, 40 128 Z"/>
+        </defs>
+        <g opacity=".92">
+          <text x="18" y="26" fill="#FF6F5E" font-size="15" font-weight="800" font-family="var(--font)">剛體：整塊轉</text>
+          <rect x="18" y="52" width="180" height="96" rx="20" fill="none" stroke="#FF6F5E" stroke-width="3" stroke-dasharray="7 6" opacity=".55"/>
+          <use href="#blob" fill="#2B3A47" stroke="#48607A" stroke-width="2"/>
+          <path d="M108 250 A70 70 0 0 1 178 180" fill="none" stroke="#FF6F5E" stroke-width="3.5" stroke-linecap="round"/>
+          <path d="M178 180 l-3 -13 l13 6 z" fill="#FF6F5E"/>
+          <text x="18" y="286" fill="#7F92A3" font-size="14" font-family="var(--font)">整個物件一起轉，內部不變形</text>
+        </g>
+        <line x1="230" y1="40" x2="230" y2="280" stroke="#22323F" stroke-width="2"/>
+        <g opacity=".98">
+          <text x="256" y="26" fill="#34C97B" font-size="15" font-weight="800" font-family="var(--font)">有骨架：真的會彎</text>
+          <use href="#blob" transform="translate(226,4)" fill="#233A32" stroke="#34C97B" stroke-width="2"/>
+          <g stroke="#34C97B" stroke-width="3.5" stroke-linecap="round" fill="none">
+            <path d="M276 128 L306 116"/><path d="M306 116 L338 104"/><path d="M338 104 L368 96"/><path d="M368 96 L394 104"/>
+          </g>
+          <g fill="#FFC43D">
+            <circle cx="276" cy="128" r="5.5"/><circle cx="306" cy="116" r="5.5"/><circle cx="338" cy="104" r="5.5"/>
+            <circle cx="368" cy="96" r="5.5"/><circle cx="394" cy="104" r="5.5"/>
+          </g>
+          <path d="M282 250 C316 216, 352 206, 396 214" fill="none" stroke="#34C97B" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="4 7"/>
+          <text x="256" y="286" fill="#7F92A3" font-size="14" font-family="var(--font)">每根骨頭帶動附近的頂點</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+  <div class="notes" hidden>
+    <p><b>病因（約 24 秒）</b>：骨架決定能不能彎。沒有骨架，引擎只能整塊轉。</p>
+    <p class="cue">「這不是美感問題，是缺一段管線」——這句是全場第一個轉折，講慢一點。</p>
+  </div>
+</section>
+
+<!-- ============ 4. 證據 A：對照動圖 ============ -->
+<section class="slide" data-sec="證據" data-t="26">
+  <div class="cols c2w" style="flex:1">
+    <div>
+      <div class="eyebrow sun" data-anim><i></i>差別在這裡</div>
+      <h2 data-anim style="font-size:38px">同一個模型，<br>差別只在<span class="hi g">有沒有骨架</span></h2>
+      <p data-anim>
+        左右兩隻是<b>同一個模型、同一張貼圖</b>。
+        差別只在右邊經過了這條管線。
+      </p>
+      <ul class="ticks" data-anim>
+        <li>模型與貼圖：Roblox 內建 AI 生成</li>
+        <li>骨架與權重：腳本自動算，不必手動綁</li>
+        <li>兩邊<b>總旋轉角度都是 50°</b>，才公平</li>
+      </ul>
+    </div>
+    <figure data-anim>
+      <img src="media/dragon_compare.webp" alt="左邊沒有骨架的模型只能整隻轉動，右邊有骨架的同一個模型身體真的彎曲">
+      <figcaption>
+        <span class="src-tag">動作示意</span>
+        Blender 渲染。模型、貼圖、骨架、權重都是真的；目前骨架是脊椎鏈，
+        <b>腿還沒有骨頭，所以做的是抬頭與身體起伏，不是走路</b>。
+      </figcaption>
+    </figure>
+  </div>
+  <div class="notes" hidden>
+    <p><b>證據 A（約 26 秒）</b>：讓畫面說話，這裡不要講太多。指出「同一個模型、同一張貼圖」。</p>
+    <p class="cue">★ 主動講出「這是 Blender 渲染，不是 Roblox 畫面」以及「腿沒骨頭所以不是走路」——誠實的限制反而讓後面的實拍更有份量。</p>
+  </div>
+</section>
+
+<!-- ============ 5. 證據 B：Roblox 實拍 ============ -->
+<section class="slide" data-sec="證據" data-t="24">
+  <div class="eyebrow" data-anim><i></i>在 Roblox 裡的實際畫面</div>
+  <h2 data-anim style="font-size:36px">渲染圖可以騙人，<span class="hi g">引擎畫面不行</span></h2>
+  <figure data-anim class="wide" style="margin-top:2px">
+    <img src="media/studio_rigid_vs_skinned.jpg" alt="Roblox Studio 裡的四隻對照：剛體靜止、剛體整隻轉、有骨架靜止、有骨架彎曲">
+    <figcaption>
+      <span class="src-tag real">Roblox Studio 實拍</span>
+      綁完骨架匯回 Roblox 之後拍的。左兩隻沒有骨架，一轉就整隻翻過去、腳離地；
+      右兩隻是<b>同一個模型</b>，腳踩在原地、身體與脖子彎起來。
+    </figcaption>
+  </figure>
+  <p data-anim style="margin:14px 0 0; font-size:18px">
+    動圖負責吸引，<b>實拍負責證明它真的在引擎裡</b>。
+    凡是宣稱「做得到」的東西，都要拿出它在真實環境裡的樣子。
+  </p>
+  <div class="notes" hidden>
+    <p><b>證據 B（約 24 秒）</b>：這張是整個案例的關鍵證據。</p>
+    <p class="cue">帶到下半場的伏筆：「渲染圖可以騙人，引擎畫面不行」——這其實已經是心得①的前奏。</p>
+  </div>
+</section>
+
+<!-- ============ 6. 管線 ============ -->
+<section class="slide cool" data-sec="案例" data-t="26">
+  <div class="eyebrow sky" data-anim><i></i>那一段管線長這樣</div>
+  <h2 data-anim style="font-size:38px">把模型<b>搬出</b>引擎、綁上骨架、再<b>搬回去</b></h2>
+  <div data-anim style="margin:14px 0 4px">
+    <svg viewBox="0 0 1130 190" role="img" aria-label="四步管線流程圖">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0 0 L10 5 L0 10 z" fill="#3B93F7"/>
+        </marker>
+      </defs>
+      <g font-family="var(--font)">
+        <!-- 節點 1 -->
+        <rect x="4" y="34" width="240" height="92" rx="18" fill="rgba(59,147,247,.1)" stroke="#2E4252" stroke-width="1.5"/>
+        <text x="24" y="66" fill="#F2F7FC" font-size="18" font-weight="800">Roblox Studio</text>
+        <text x="24" y="92" fill="#B9C7D4" font-size="15">官方 AI 生的模型</text>
+        <text x="24" y="112" fill="#7F92A3" font-size="13">EditableMesh 讀出幾何與貼圖</text>
+        <!-- 節點 2 -->
+        <rect x="298" y="34" width="240" height="92" rx="18" fill="rgba(139,124,246,.1)" stroke="#2E4252" stroke-width="1.5"/>
+        <text x="318" y="66" fill="#F2F7FC" font-size="18" font-weight="800">本機接收器</text>
+        <text x="318" y="92" fill="#B9C7D4" font-size="15">HttpService → 127.0.0.1</text>
+        <text x="318" y="112" fill="#7F92A3" font-size="13">分段 POST 出 .obj 與貼圖</text>
+        <!-- 節點 3 -->
+        <rect x="592" y="34" width="240" height="92" rx="18" fill="rgba(52,201,123,.1)" stroke="#2E4252" stroke-width="1.5"/>
+        <text x="612" y="66" fill="#F2F7FC" font-size="18" font-weight="800">Blender 綁骨</text>
+        <text x="612" y="92" fill="#B9C7D4" font-size="15">決定論權重，不用自動權重</text>
+        <text x="612" y="112" fill="#7F92A3" font-size="13">零權重頂點必須是 0</text>
+        <!-- 節點 4 -->
+        <rect x="886" y="34" width="240" height="92" rx="18" fill="rgba(255,196,61,.1)" stroke="#2E4252" stroke-width="1.5"/>
+        <text x="906" y="66" fill="#F2F7FC" font-size="18" font-weight="800">匯回 Roblox</text>
+        <text x="906" y="92" fill="#B9C7D4" font-size="15">會彎的角色</text>
+        <text x="906" y="112" fill="#7F92A3" font-size="13">網格真的跟著骨頭變形</text>
+        <!-- 箭頭 -->
+        <g stroke="#3B93F7" stroke-width="2.5" marker-end="url(#ar)" fill="none" class="flow-dash" stroke-dasharray="7 6">
+          <path d="M250 80 L288 80"/><path d="M544 80 L582 80"/><path d="M838 80 L876 80"/>
+        </g>
+        <text x="24" y="168" fill="#7F92A3" font-size="14">★ 這條路原本被專案文件寫成「做不到」，而那句話從來沒有人測過 —— 待會第三條規矩會回來講它</text>
+      </g>
+    </svg>
+  </div>
+  <div class="bignum" data-anim style="margin-top:30px">
+    <div><b class="g">4,291</b><span>頂點全部有權重</span></div>
+    <div><b class="s">5,906</b><span>面</span></div>
+    <div><b class="u">0</b><span>個漏掉的頂點</span></div>
+    <div style="min-width:210px"><b class="c">22</b><span>改用 Blender 內建的自動權重，<br>同一個模型就漏掉 22 個<b style="display:inline;font-size:inherit">而且不報錯</b></span></div>
+  </div>
+  <div class="notes" hidden>
+    <p><b>管線（約 26 秒）</b>：四步。重點不是技術細節，是右邊那組數字。</p>
+    <p class="cue">★★ 如果有人問「你怎麼知道全部有權重」——答案是：<b>腳本走訪每一個頂點，把它所有權重加總，≤0 就計數</b>，跟 Blender 報不報錯無關。而那個 <b>22</b> 是陽性對照：同一個模型、同一把尺，改用 Blender 內建的自動權重就漏掉 22 個，<b>而且完全不報錯</b>。有對照組，「0」才有意義。</p>
+    <p class="cue">★ 另外還有第二道獨立的尺：拆開匯出的 glb 二進位、直接讀權重資料自己算——因為 Blender 說「匯出完成」不代表檔案裡真的有骨架。</p>
+    <p class="cue">最後那行字是刻意埋的鉤子，等一下第三條規矩會回頭指這裡。</p>
+  </div>
+</section>
+
+<!-- ============ 7. 誠實面對市場 ============ -->
+<section class="slide tight" data-sec="案例" data-t="30">
+  <div class="eyebrow coral" data-anim><i></i>誠實的部分</div>
+  <h2 data-anim style="font-size:35px">工具，官方今年全部免費送了。<br><span class="hi">但沒有人會送你一套工作架構</span></h2>
+  <div class="cols c2" style="flex:1; align-items:start">
+    <div class="card coral" data-anim>
+      <div class="ic"><svg><use href="#i-bug"/></svg></div>
+      <h3 style="color:var(--coral)">被官方一樣一樣送出去的</h3>
+      <ul class="ticks x" style="margin-top:10px">
+        <li>Studio 內建 MCP（2026-03-05 起免安裝）</li>
+        <li>AI 生成模型、材質、程序化物件</li>
+        <li>Playtest 自動化、Planning Mode</li>
+      </ul>
+      <p style="margin-top:14px; color:var(--ink3); font-size:16px">
+        作為一套「工具集」，這個專案的價值<b>已經死了</b>。
+      </p>
+    </div>
+    <div class="card" data-anim>
+      <div class="ic"><svg><use href="#i-shield"/></svg></div>
+      <h3 style="color:var(--grass)">沒有人會送的：讓 AI agent 能工作的架構</h3>
+      <ul class="ticks" style="margin-top:10px">
+        <li><b>規則要放在它會讀到的地方</b>，不是放在人的腦袋裡</li>
+        <li><b>要明講哪些事禁止它做</b>（例：不准改 Studio 裡的腳本，會被無聲蓋掉）</li>
+        <li><b>要有辦法證明它做完的是真的</b>（所以才需要陽性對照）</li>
+      </ul>
+      <p style="margin-top:14px; color:var(--ink3); font-size:16px">
+        官方送你工具，<b>不會送你怎麼用它工作</b>。
+      </p>
+    </div>
+  </div>
+  <div class="punch" data-anim>
+    <p>回頭看，這個專案真正留下來的<b>不是工具，是那套架構</b>。
+      <span class="who">★ 但誠實講：它不是一開始就規劃好的，是一路撞出來的 —— 所以後半場講的是規矩，不是功能。</span></p>
+  </div>
+  <div class="notes" hidden>
+    <p><b>誠實 ＋ 轉場（約 30 秒）</b>：這張是全場最重要的轉場。先承認工具那一半被官方免費取代了，再帶出真正留下來的東西。</p>
+    <p class="cue">★ 右邊三條刻意對應到後半場：第一條 → 規矩 2（文件寫給 AI 讀）、第二條 → 規矩 1（分工線．哪些事不給它碰）、第三條 → 規矩 4（檢查要有陽性對照）。講的時候可以說「這三件事等一下會一條一條展開」。</p>
+    <p class="cue">★ 措辭守住：不要講成「我一開始就打算做一套架構」。那是事後合理化。實情是規則幾乎都是撞到才寫的——例如「不准改 Studio 裡的腳本」是實測發現同步會無聲覆蓋之後才定的。</p>
+  </div>
+</section>
+
+<!-- ============ 8. Part 2 過場 ============ -->
+<section class="slide chapter cool" data-sec="心得" data-t="24">
+  <div class="num" data-anim>PART 2 — 協作心得</div>
+  <h1 data-anim style="font-size:56px">四條規矩，<span class="hi g">都是撞出來的</span></h1>
+  <p data-anim style="font-size:20px; margin:4px 0 22px">
+    接下來這幾張，我會把兩個主詞分得很清楚 —— 因為最貴的幾次教訓，都發生在<b>分不清楚的時候</b>。
+  </p>
+  <div class="whois" data-anim>
+    <span class="tag ai">AI</span>
+    <p>Claude Code：寫程式、寫文件、跑檢查、做量測。<b>技術層面的事，是它做的。</b></p>
+    <span class="tag me">我</span>
+    <p>看畫面、說哪裡不對、按下「可以」。<b>我能給的是觀點、感受，和目標在哪裡。</b></p>
+  </div>
+  <div class="notes" hidden>
+    <p><b>過場（約 24 秒）</b>：這裡換氣，並且把主詞規則講死。接下來跟 Roblox 沒關係了，是通用的。</p>
+    <p class="cue">★ 這張最重要的一句：「技術層面的事我只能允許」——我沒有能力判斷 AI 的技術宣稱對不對，所以後面第三條規矩才必須存在。</p>
+  </div>
+</section>
+
+<!-- ============ 9. 心得 ①：我定目標 ============ -->
+<section class="slide" data-sec="心得" data-t="30">
+  <div class="eyebrow" data-anim><i></i>規矩 1</div>
+  <h2 data-anim style="font-size:40px">分工線畫在哪裡，<span class="hi g">決定成敗</span></h2>
+  <div class="split" data-anim style="margin-top:8px">
+    <div class="ai">
+      <div class="hd"><span class="dot"></span>AI 出的</div>
+      <ul>
+        <li>寫程式、寫文件、跑檢查</li>
+        <li>避開已知的坑</li>
+        <li>量得出來的事實</li>
+      </ul>
+    </div>
+    <div class="me">
+      <div class="hd"><span class="dot"></span>我出的</div>
+      <ul>
+        <li>目標：要做什麼、為什麼要做</li>
+        <li>觀點與感受：好不好、對不對</li>
+        <li><b>按下那一句「可以」</b></li>
+      </ul>
+    </div>
+  </div>
+  <p data-anim style="margin-top:18px; font-size:20px">
+    技術層面的事<b>我只能允許</b>。但幾個最關鍵的問題，
+    都是<b>我用眼睛看出來的</b> —— 而當下 AI 的自動檢查全部是綠的。
+  </p>
+  <div class="punch g" data-anim>
+    <p>這條線畫錯了，<b>後面三條規矩全部會失效</b>。
+      <span class="who">因為你會開始去檢查程式對不對 —— 那不在你的守備範圍，而且你檢查不出來。</span></p>
+  </div>
+  <div class="notes" hidden>
+    <p><b>規矩 1（約 30 秒）</b>：這是四條裡的第一條，因為分工線決定了後面三條長什麼樣。</p>
+    <p class="cue">★ 「按下那一句可以」是這張的重點：不要把 AI 做的事講成自己做的，但也不要小看「允許」——決定要不要往下走的是我。</p>
+    <p class="cue">★ 這四條會照協作的順序走一圈：我定目標（1）→ AI 執行（2）→ AI 回報（3）→ 我驗收（4），最後第 13 張把它接成一個循環。</p>
+  </div>
+</section>
+
+<!-- ============ 10. 心得 ② ============ -->
+<section class="slide" data-sec="心得" data-t="28">
+  <div class="eyebrow sky" data-anim><i></i>規矩 2</div>
+  <h2 data-anim style="font-size:40px">AI 寫的文件，<span class="hi g">第一個讀者也是 AI</span></h2>
+  <div class="cols c2" style="flex:1; margin-top:8px; align-items:start">
+    <div class="card" data-anim style="border-color:rgba(255,111,94,.3)">
+      <div class="ic coral" style="background:rgba(255,111,94,.15)"><svg style="fill:var(--coral)"><use href="#i-doc"/></svg></div>
+      <h3 style="color:var(--coral)">當成「教材」寫</h3>
+      <p>預設讀者是人 → 人必須<b>記住</b>才有用 → 忘記的那天，坑照踩。</p>
+      <p class="dim small" style="margin-top:12px">例：「匯入工具認的是網格名稱，不是物件名稱」——沒有人記得住這種事，也不該記。</p>
+    </div>
+    <div class="card" data-anim style="border-color:rgba(52,201,123,.32)">
+      <div class="ic"><svg><use href="#i-shield"/></svg></div>
+      <h3 style="color:var(--grass)">當成「護欄」寫</h3>
+      <p>預設讀者是 AI → 它<b>每次開工都會重讀</b> → 規則自動生效，人不必知道有這條規則存在。</p>
+      <p class="dim small" style="margin-top:12px">同一句話，換一個預設讀者，就從「要背的知識」變成「會自動閃避的動作」。</p>
+    </div>
+  </div>
+  <div class="punch s" data-anim>
+    <p>那份 770 行的坑清單，<b>我沒讀過，也不需要讀。</b>
+      <span class="who">它是 AI 寫給 AI 看的。我要知道的只有一件事：它會自動生效。</span></p>
+  </div>
+  <div class="notes" hidden>
+    <p><b>規矩 2（約 28 秒）</b>：這條最實用，也最容易複製到聽眾自己的工作上。</p>
+    <p class="cue">★ 主詞：文件不是我寫的，是 AI 寫的；而它的讀者也是 AI。我在這條裡唯一的角色，是決定「不需要自己讀」。</p>
+  </div>
+</section>
+
+<!-- ============ 11. 心得 ③ ============ -->
+<section class="slide cool tight" data-sec="心得" data-t="32">
+  <div class="eyebrow grape" data-anim><i></i>規矩 3</div>
+  <h2 data-anim style="font-size:35px">每一句「做不到」，<br>都要附上<span class="hi">誰、何時、怎麼驗的</span></h2>
+  <div class="cols c2t" style="flex:1">
+    <div>
+      <p data-anim style="font-size:20px">
+        AI 在文件裡寫下一句話：<b>「官方生的模型出不來，所以沒辦法綁骨架。」</b>
+      </p>
+      <p data-anim style="font-size:20px">
+        它聽起來很合理，所以被抄進三份文件、寄給家人、寫上對外的頁面。
+        而<b>從來沒有人真的去測過它</b>。
+      </p>
+      <p data-anim style="font-size:20px; color:var(--coral)">
+        兩週後實際測了一次。<b>那句話是錯的。</b>
+        它關掉的，正好是這個專案現在唯一還活著的那條路。
+      </p>
+    </div>
+    <div data-anim>
+      <!-- 時間軸：一句沒驗過的話造成的連鎖 -->
+      <svg viewBox="0 0 430 300" role="img" aria-label="一句未經驗證的結論造成的連鎖影響">
+        <g font-family="var(--font)">
+          <line x1="30" y1="24" x2="30" y2="272" stroke="#2E4252" stroke-width="2"/>
+          <circle cx="30" cy="34" r="7" fill="#7F92A3"/>
+          <text x="52" y="30" fill="#B9C7D4" font-size="15" font-weight="700">AI 推論出「做不到」</text>
+          <text x="52" y="52" fill="#7F92A3" font-size="13">合理，但沒有實測</text>
+          <circle cx="30" cy="102" r="7" fill="#FFC43D"/>
+          <text x="52" y="98" fill="#B9C7D4" font-size="15" font-weight="700">被抄進三份文件</text>
+          <text x="52" y="120" fill="#7F92A3" font-size="13">從此看起來像已知事實</text>
+          <circle cx="30" cy="170" r="7" fill="#FF6F5E"/>
+          <text x="52" y="166" fill="#B9C7D4" font-size="15" font-weight="700">寄出去、寫上官網</text>
+          <text x="52" y="188" fill="#7F92A3" font-size="13">別人也開始相信它</text>
+          <circle cx="30" cy="240" r="9" fill="#34C97B"/>
+          <text x="52" y="236" fill="#F2F7FC" font-size="16" font-weight="800">兩週後實測：是錯的</text>
+          <text x="52" y="258" fill="#34C97B" font-size="13">那是唯一還活著的那條路</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+  <div class="punch" data-anim>
+    <p>拿不出驗證來源的「做不到」，只能算<b>「還沒驗過」</b>，不准當成結論用。
+      <span class="who">★ 這條規矩只能 AI 自己守 —— 因為那句話技術上對不對，<b>我判斷不了</b>。我唯一的防線，就是要求它把「誰、何時、怎麼驗的」寫出來。</span></p>
+  </div>
+  <div class="notes" hidden>
+    <p><b>規矩 3（約 32 秒）</b>：這是全場最想讓人記住的一條。</p>
+    <p class="cue">★ 關鍵不是「AI 說錯了」，是「一句沒驗過的話會被它自己的文件反覆引用，最後長得像事實」。而我坐在外面，完全沒有能力分辨——這就是為什麼規矩必須寫在它那邊。</p>
+    <p class="cue">★ 如果有人問「那實務上怎麼做」：要求它在每一句「做不到」後面補上<b>誰、何時、用什麼方法驗的</b>；補不出來，那句話就只能當「還沒驗過」，不能拿來關掉一條路。</p>
+  </div>
+</section>
+
+<!-- ============ 12. 心得 ④：我驗收 ============ -->
+<section class="slide warm tight" data-sec="心得" data-t="36">
+  <div class="eyebrow coral" data-anim><i></i>規矩 4</div>
+  <h2 data-anim style="font-size:40px">AI 最貴的錯，<span class="hi">不是報錯</span></h2>
+  <p data-anim style="font-size:19px; margin-bottom:14px">
+    報錯很好處理。真正花掉好幾天的，都是<b>畫面看起來一切正常</b>的那種失敗。
+  </p>
+  <div class="grid3" data-anim>
+    <div class="card coral">
+      <div class="ic"><svg><use href="#i-search"/></svg></div>
+      <h3>四個數字都是真的</h3>
+      <p><b>AI</b> 用四項統計證明貼圖座標「活著」：數量、相異值、範圍、非全零。<b>四個都是真的，貼圖仍然是錯的</b>——紅斑跑到肚子上。</p>
+      <p class="dim small">真因：兩邊的座標原點上下相反。</p>
+    </div>
+    <div class="card sun">
+      <div class="ic"><svg><use href="#i-layers"/></svg></div>
+      <h3>AI 的檢查全綠，我一眼看出不對</h3>
+      <p>網頁上的圖被壓扁了，<b>AI 的自動檢查全部通過</b>。是<b>我用眼睛看出來的</b>：「比例跟我自己截的不一樣」。</p>
+      <p class="dim small">真因：CSS 少寫一行 height:auto。</p>
+    </div>
+    <div class="card sky">
+      <div class="ic"><svg><use href="#i-flag"/></svg></div>
+      <h3>首頁 200，但網站是壞的</h3>
+      <p>部署設定錯了，首頁照樣回 200，<b>AI 的檢查就這樣過了</b>。能分辨對錯的不是首頁，是某個檔案該不該是 404。</p>
+      <p class="dim small">真因：檢查項目本身選錯了。</p>
+    </div>
+  </div>
+  <div class="punch c" data-anim>
+    <p>AI 寫的每一個檢查，都要先問：<b>它在失敗的時候，會不會也通過？</b>
+      <span class="who">會的話，那不是檢查，是裝飾。<br>
+        ★ 而最後那道驗收也不是「上線了」，是：<b>有一個不是我的人，在我不在場的時候，用它做完一件事</b> —— 誠實講，這件事到今天還沒有發生。</span></p>
+  </div>
+  <div class="notes" hidden>
+    <p><b>規矩 4（約 36 秒）</b>：循環的最後一格，也是 Part 2 的收尾。三個真案例各講一句就好，重點在最後那段。</p>
+    <p class="cue">★ 主詞：三張卡都是 AI 做的檢查、AI 給的綠燈。中間那張是唯一有「我」的——而我做的事只是看畫面說比例怪怪的。可以停一下問現場有沒有人遇過。</p>
+    <p class="cue">★ 最後那句「這件事還沒有發生」不要跳過。承認它比宣稱成功更有說服力，也自然帶到最後一張的邀請。</p>
+  </div>
+</section>
+
+<!-- ============ 13. 盤整：四條規矩接成一個循環 ============ -->
+<section class="slide cool tight" data-sec="心得" data-t="20">
+  <div class="eyebrow grape" data-anim><i></i>盤整</div>
+  <h2 data-anim style="font-size:36px">四條規矩，接起來是<span class="hi g">同一個循環</span></h2>
+
+  <div class="loop4" data-anim>
+    <div class="lp me">
+      <div class="top"><div class="ic2"><svg><use href="#i-flag"/></svg></div><span class="no">規矩 1</span></div>
+      <h3>我：定目標</h3>
+      <p>要做什麼、為什麼做。<b>技術層面我只能允許</b>，我給的是目標、觀點、感受。</p>
+    </div>
+    <div class="arw"><svg><use href="#i-arrow"/></svg></div>
+
+    <div class="lp ai">
+      <div class="top"><div class="ic2"><svg><use href="#i-code"/></svg></div><span class="no">規矩 2</span></div>
+      <h3>AI：執行</h3>
+      <p>規則要寫在<b>它會讀到的地方</b>。護欄自動生效，人不必背。</p>
+    </div>
+    <div class="arw"><svg><use href="#i-arrow"/></svg></div>
+
+    <div class="lp ai">
+      <div class="top"><div class="ic2"><svg><use href="#i-doc"/></svg></div><span class="no">規矩 3</span></div>
+      <h3>AI：回報</h3>
+      <p>每一句「做不到」，都要附上<b>誰、何時、怎麼驗的</b>。</p>
+    </div>
+    <div class="arw"><svg><use href="#i-arrow"/></svg></div>
+
+    <div class="lp me">
+      <div class="top"><div class="ic2"><svg><use href="#i-search"/></svg></div><span class="no">規矩 4</span></div>
+      <h3>我：驗收</h3>
+      <p>檢查要先問：<b>它在失敗的時候，會不會也通過？</b></p>
+    </div>
+  </div>
+
+  <!-- 回流：驗收之後，我說哪裡不對，那就是下一輪的目標 -->
+  <svg class="loopback" data-anim viewBox="0 0 1128 84" role="img" aria-label="驗收之後回到定目標，形成一個循環">
+    <defs>
+      <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0 0 L10 5 L0 10 z" fill="#8B7CF6"/>
+      </marker>
+    </defs>
+    <g fill="none" stroke="#8B7CF6" stroke-width="2.5" stroke-dasharray="6 7">
+      <path d="M1085 2 L1085 52 Q1085 64 1073 64 L735 64"/>
+      <path d="M393 64 L55 64 Q43 64 43 52 L43 8" marker-end="url(#ab)"/>
+    </g>
+    <text x="564" y="70" text-anchor="middle" fill="#B9C7D4" font-size="16" font-weight="700"
+          font-family="'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif">我說哪裡不對 —— 那就是下一輪的目標</text>
+  </svg>
+
+  <div class="punch" data-anim>
+    <p>四條規矩不是四張清單，是<b>同一個循環上的四道關卡</b>。
+      <span class="who">少掉任何一道，AI 都能交出一份看起來很完整、但沒有人驗過的東西。</span></p>
+  </div>
+
+  <div class="notes" hidden>
+    <p><b>盤整（約 20 秒）</b>：這張是複習，講快。左到右念一遍四個環節，然後指底下那條虛線。</p>
+    <p class="cue">★ 兩個顏色沿用前面：綠色是我、藍色是 AI。四條規矩剛好一條守一個環節——這不是硬湊的，是因為協作本來就是這個循環。</p>
+    <p class="cue">★ 如果時間超前，可以在這裡多講一句：這個循環裡我只碰頭尾兩格，中間兩格都是 AI 的事——所以規矩才要寫在它那邊。</p>
+  </div>
+</section>
+
+<!-- ============ 14. 收尾 ============ -->
+<section class="slide" data-sec="收尾" data-t="18">
+  <div class="cols c2" style="flex:1">
+    <div>
+      <div class="eyebrow" data-anim><i></i>謝謝</div>
+      <h2 data-anim style="font-size:42px">東西都開源了，<br><span class="hi g">歡迎去把它弄壞</span></h2>
+      <p data-anim style="font-size:20px">
+        如果你剛好在做 Roblox，它可以直接用；<br>
+        如果沒有，那四條規矩換個領域一樣成立。
+      </p>
+      <div class="metas" data-anim style="margin-top:22px">
+        <span>MIT 授權</span>
+        <span>中英雙語</span>
+        <span>非官方個人專案</span>
+      </div>
+    </div>
+    <div data-anim>
+      <div class="card" style="padding:30px">
+        <p style="font-size:14px; letter-spacing:.14em; color:var(--ink3); font-weight:800; margin-bottom:10px">原始碼</p>
+        <p style="font-size:23px; color:var(--grass); font-weight:800; word-break:break-all; margin-bottom:22px">
+          <a href="https://github.com/LeeAN-Hsuan/notblocky" target="_blank" rel="noopener">github.com/LeeAN-Hsuan/notblocky</a>
+        </p>
+        <p style="font-size:14px; letter-spacing:.14em; color:var(--ink3); font-weight:800; margin-bottom:10px">網站</p>
+        <p style="font-size:23px; color:var(--sky); font-weight:800; word-break:break-all; margin:0">
+          <a href="https://notblocky.vercel.app" target="_blank" rel="noopener">notblocky.vercel.app</a>
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="punch" data-anim>
+    <p>最後一句：<b>跟 AI 協作最大的風險，不是它幫倒忙，是它把你騙得很舒服。</b>
+      <span class="who">四條規矩，全部都是為了讓自己有機會發現「我現在正被說服」。</span></p>
+  </div>
+  <div class="notes" hidden>
+    <p><b>收尾（約 18 秒）</b>：連結唸一次就好，重點在最後那句。</p>
+    <p class="cue">如果時間還有剩，可以停在這張開放 Q&amp;A。</p>
+  </div>
+</section>
+
+<!-- 底部列 / 講稿 / 總覽 / 說明卡：必須放在 #stage 內，
+     否則它們的 position:absolute 會相對於視窗而不是舞台，投影時會飄出畫面 -->
+<div id="chrome" hidden></div>
+<div id="notes" hidden></div>
+<div id="ov" hidden></div>
+<div id="help" hidden></div>
+
+</div><!-- /#stage -->
+
+<script src="vendor/anime.umd.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  var stage  = document.getElementById("stage");
+  var slides = [].slice.call(document.querySelectorAll(".slide"));
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var A = (window.anime && typeof window.anime.animate === "function") ? window.anime : null;
+
+  var idx = 0;                    // 目前頁碼（0-based）
+  var TOTAL = slides.length;
+  var TARGET = 6 * 60;            // 目標總長 6 分鐘（秒）
+
+  /* ---------- 建立底部列 / 講稿 / 總覽 / 說明卡 ---------- */
+  var chrome = document.getElementById("chrome");
+  chrome.hidden = false;
+  chrome.innerHTML =
+    '<div class="brand"><img src="media/favicon-48.png" alt="" width="22" height="22">NotBlocky</div>' +
+    '<div class="sec" id="secname"></div>' +
+    '<div class="right"><div id="timer" title="按 T 開始／暫停計時">00:00</div>' +
+    '<div id="pageno">1 / ' + TOTAL + '</div></div>';
+  var bar = document.createElement("div"); bar.id = "bar"; stage.appendChild(bar);
+
+  var notesEl = document.getElementById("notes"); notesEl.hidden = false;
+  var ovEl    = document.getElementById("ov");    ovEl.hidden = false;
+  var helpEl  = document.getElementById("help");  helpEl.hidden = false;
+  helpEl.innerHTML =
+    '<b>操作</b><br>' +
+    '<kbd>&larr;</kbd><kbd>&rarr;</kbd> 翻頁 &nbsp; <kbd>S</kbd> 講稿 &nbsp; <kbd>O</kbd> 總覽<br>' +
+    '<kbd>T</kbd> 計時 &nbsp; <kbd>F</kbd> 全螢幕 &nbsp; <kbd>1</kbd>-<kbd>9</kbd> 跳頁';
+
+  /* ---------- 總覽：列出每張的章節、標題、建議秒數 ---------- */
+  var ovg = document.createElement("div"); ovg.id = "ovg";
+  ovEl.innerHTML = '<h4>總覽 — 點一下跳到那一張（按 O 或 Esc 關閉）</h4>';
+  ovEl.appendChild(ovg);
+  slides.forEach(function(s, i){
+    var h = s.querySelector("h1, h2");
+    var title = h ? h.textContent.replace(/\s+/g, " ").trim() : "（無標題）";
+    var b = document.createElement("button");
+    b.className = "ovi";
+    b.innerHTML = '<b>' + (i+1) + ' · ' + (s.dataset.sec || "") + '</b>' +
+                  '<span>' + title + '</span>' +
+                  '<em>建議 ' + (s.dataset.t || 30) + ' 秒</em>';
+    b.addEventListener("click", function(){ toggleOv(false); go(i); });
+    ovg.appendChild(b);
+  });
+  var ovItems = [].slice.call(ovg.children);
+
+  /* ---------- 舞台等比縮放：投影到任何解析度都不跑版 ---------- */
+  function fit(){
+    var pad = 0;
+    var sx = (window.innerWidth  - pad) / 1280;
+    var sy = (window.innerHeight - pad) / 720;
+    var s = Math.min(sx, sy);
+    stage.style.transform = "scale(" + s + ")";
+  }
+  window.addEventListener("resize", fit);
+  fit();
+
+  /* ---------- 換頁 ---------- */
+  function go(n, back){
+    if (n < 0 || n >= TOTAL || n === idx) return;
+    helpEl.classList.add("off");   // 任何一次換頁都收掉操作說明，免得擋住內容
+    var prev = slides[idx];
+    idx = n;
+    prev.classList.remove("on", "back");
+    var cur = slides[idx];
+    cur.classList.remove("back");
+    if (back) cur.classList.add("back");
+    cur.classList.add("on");
+    paint();
+    animateIn(cur);
+  }
+  function next(){ if (idx < TOTAL - 1) go(idx + 1, false); }
+  function prev(){ if (idx > 0) go(idx - 1, true); }
+
+  /* ---------- 每張的元素依序浮現 ---------- */
+  function animateIn(slide){
+    var items = slide.querySelectorAll("[data-anim]");
+    if (!items.length) return;
+    if (!A || reduce){
+      [].forEach.call(items, function(n){ n.style.opacity = ""; n.style.transform = ""; });
+      return;
+    }
+    A.utils.set(items, {opacity:0, translateY:18});
+    A.animate(items, {
+      opacity:1, translateY:0, duration:620,
+      delay:A.stagger(80, {start:120}), ease:"out(3)"
+    });
+  }
+
+  /* ---------- 更新底部列、進度條、講稿、總覽選取態 ---------- */
+  function paint(){
+    document.getElementById("pageno").textContent = (idx + 1) + " / " + TOTAL;
+    document.getElementById("secname").textContent = slides[idx].dataset.sec || "";
+    bar.style.width = ((idx + 1) / TOTAL * 100) + "%";
+    var n = slides[idx].querySelector(".notes");
+    notesEl.innerHTML = '<h4>講稿</h4>' + (n ? n.innerHTML : '<p class="cue">（這張沒有講稿）</p>');
+    ovItems.forEach(function(b, i){ b.setAttribute("aria-current", i === idx ? "true" : "false"); });
+  }
+
+  /* ---------- 計時器：對照「建議秒數」判斷超前或落後 ---------- */
+  var t0 = null, tick = null;
+  var cum = [];  // 每張結束時的累積秒數
+  (function(){ var a = 0; slides.forEach(function(s){ a += parseInt(s.dataset.t || 30, 10); cum.push(a); }); })();
+  var PLANNED = cum[cum.length - 1];
+
+  function fmt(s){
+    var m = Math.floor(s / 60), r = s % 60;
+    return (m < 10 ? "0" : "") + m + ":" + (r < 10 ? "0" : "") + r;
+  }
+  function renderTimer(){
+    var el = document.getElementById("timer");
+    if (t0 === null){ el.textContent = "00:00"; el.className = ""; return; }
+    var e = Math.floor((Date.now() - t0) / 1000);
+    // 應該在的進度 = 目前這張結束時的累積秒數
+    var should = cum[idx];
+    var diff = e - should;
+    var label = fmt(e);
+    if (diff > 12) label += "  +" + fmt(diff);
+    else if (diff < -12) label += "  -" + fmt(-diff);
+    el.textContent = label;
+    el.className = e > TARGET ? "over" : (diff > 25 ? "late" : "run");
+  }
+  function toggleTimer(){
+    if (t0 === null){ t0 = Date.now(); tick = setInterval(renderTimer, 1000); renderTimer(); }
+    else { clearInterval(tick); tick = null; t0 = null; renderTimer(); }
+  }
+
+  /* ---------- 講稿 / 總覽 / 全螢幕 ---------- */
+  function toggleNotes(f){ notesEl.classList.toggle("on", f === undefined ? !notesEl.classList.contains("on") : f); }
+  function toggleOv(f){ ovEl.classList.toggle("on", f === undefined ? !ovEl.classList.contains("on") : f); }
+  function toggleFs(){
+    if (!document.fullscreenElement) { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
+    else { document.exitFullscreen && document.exitFullscreen(); }
+  }
+
+  /* ---------- 鍵盤 ---------- */
+  document.addEventListener("keydown", function(e){
+    var k = e.key;
+    if (k === "Escape"){ toggleOv(false); return; }
+    if (k === "ArrowRight" || k === "PageDown" || k === " " || k === "Enter"){ e.preventDefault(); next(); helpEl.classList.add("off"); return; }
+    if (k === "ArrowLeft"  || k === "PageUp"  || k === "Backspace"){ e.preventDefault(); prev(); helpEl.classList.add("off"); return; }
+    if (k === "Home"){ e.preventDefault(); go(0, true); return; }
+    if (k === "End"){ e.preventDefault(); go(TOTAL - 1, false); return; }
+    var lk = k.toLowerCase();
+    if (lk === "s"){ toggleNotes(); return; }
+    if (lk === "o"){ toggleOv(); return; }
+    if (lk === "t"){ toggleTimer(); return; }
+    if (lk === "f"){ toggleFs(); return; }
+    if (/^[1-9]$/.test(k)){ go(parseInt(k, 10) - 1, parseInt(k, 10) - 1 < idx); return; }
+    if (k === "0"){ go(9, 9 < idx); return; }
+  });
+
+  /* ---------- 點擊左右半邊翻頁（投影時最方便） ---------- */
+  stage.addEventListener("click", function(e){
+    if (ovEl.classList.contains("on")) return;
+    if (e.target.closest("#notes, #chrome, .ovi, a")) return;   // 點連結不該同時翻頁
+    helpEl.classList.add("off");
+    var r = stage.getBoundingClientRect();
+    if ((e.clientX - r.left) / r.width < .28) prev(); else next();
+  });
+
+  /* ---------- 觸控滑動 ---------- */
+  var tx = null;
+  stage.addEventListener("touchstart", function(e){ tx = e.changedTouches[0].clientX; }, {passive:true});
+  stage.addEventListener("touchend", function(e){
+    if (tx === null) return;
+    var d = e.changedTouches[0].clientX - tx; tx = null;
+    if (Math.abs(d) < 46) return;
+    if (d < 0) next(); else prev();
+  }, {passive:true});
+
+  /* ---------- 起始 ---------- */
+  paint();
+  animateIn(slides[0]);
+  setTimeout(function(){ helpEl.classList.add("off"); }, 9000);  // 沒人動也會自己收起來
+})();
+</script>
+</body>
+</html>
